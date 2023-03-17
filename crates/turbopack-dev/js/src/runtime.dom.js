@@ -1,5 +1,5 @@
 /** @typedef {import('../types/backend').RuntimeBackend} RuntimeBackend */
-/** @typedef {import('../types/dom').ChunkResolver} ChunkResolver */
+/** @typedef {import('../types/runtime.dom').ChunkResolver} ChunkResolver */
 /** @typedef {import('../types').ChunkPath} ChunkPath */
 /** @typedef {import('../types').SourceInfo} SourceInfo */
 

@@ -58,9 +58,8 @@ impl ModuleOptionsVc {
         context: ModuleOptionsContextVc,
     ) -> Result<ModuleOptionsVc> {
         let ModuleOptionsContext {
-            enable_jsx,
+            ref react_transform,
             enable_emotion,
-            enable_react_refresh,
             enable_styled_jsx,
             enable_styled_components,
             enable_types,
@@ -99,12 +98,19 @@ impl ModuleOptionsVc {
         if enable_styled_components {
             transforms.push(EcmascriptInputTransform::StyledComponents);
         }
-        if let Some(enable_jsx) = enable_jsx {
-            let jsx = enable_jsx.await?;
+
+        if let ReactTransform::Enabled {
+            enable_react_refresh,
+            development,
+            import_source,
+            runtime,
+        } = react_transform
+        {
             transforms.push(EcmascriptInputTransform::React {
-                refresh: enable_react_refresh,
-                import_source: OptionStringVc::cell(jsx.import_source.clone()),
-                runtime: OptionStringVc::cell(jsx.runtime.clone()),
+                development: *development,
+                refresh: *enable_react_refresh,
+                import_source: OptionStringVc::cell(import_source.clone()),
+                runtime: OptionStringVc::cell(runtime.clone()),
             });
         }
 
@@ -217,6 +223,8 @@ impl ModuleOptionsVc {
                                     execution_context.project_path(),
                                     Some(import_map),
                                     None,
+                                    // TODO(alexkirsz) This should be passed down some other way.
+                                    "development".to_string(),
                                 ),
                                 execution_context,
                             )
@@ -340,6 +348,8 @@ impl ModuleOptionsVc {
                                     execution_context.project_path(),
                                     Some(import_map),
                                     None,
+                                    // TODO(alexkirsz) This should be passed down some other way.
+                                    "development".to_string(),
                                 ),
                                 execution_context,
                                 *loaders,

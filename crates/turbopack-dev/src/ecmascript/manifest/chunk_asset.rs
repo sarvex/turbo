@@ -11,16 +11,12 @@ use turbopack_core::{
     ident::AssetIdentVc,
     reference::AssetReferencesVc,
 };
-
-use super::chunk_item::ManifestChunkItem;
-use crate::chunk::{
-    item::EcmascriptChunkItemVc,
-    placeable::{
-        EcmascriptChunkPlaceable, EcmascriptChunkPlaceableVc, EcmascriptExports,
-        EcmascriptExportsVc,
-    },
-    EcmascriptChunkVc, EcmascriptChunkingContextVc,
+use turbopack_ecmascript::chunk::{
+    EcmascriptChunkItemVc, EcmascriptChunkPlaceable, EcmascriptChunkPlaceableVc, EcmascriptChunkVc,
+    EcmascriptChunkingContextVc, EcmascriptExports, EcmascriptExportsVc,
 };
+
+use super::chunk_item::DevManifestChunkItem;
 
 #[turbo_tasks::function]
 fn modifier() -> StringVc {
@@ -43,21 +39,21 @@ fn chunk_list_modifier() -> StringVc {
 /// actually reached, instead of eagerly as part of the chunk that the dynamic
 /// import appears in.
 #[turbo_tasks::value(shared)]
-pub struct ManifestChunkAsset {
+pub struct DevManifestChunkAsset {
     pub asset: ChunkableAssetVc,
     pub chunking_context: EcmascriptChunkingContextVc,
     pub availability_info: AvailabilityInfo,
 }
 
 #[turbo_tasks::value_impl]
-impl ManifestChunkAssetVc {
+impl DevManifestChunkAssetVc {
     #[turbo_tasks::function]
     pub fn new(
         asset: ChunkableAssetVc,
         chunking_context: EcmascriptChunkingContextVc,
         availability_info: Value<AvailabilityInfo>,
     ) -> Self {
-        Self::cell(ManifestChunkAsset {
+        Self::cell(DevManifestChunkAsset {
             asset,
             chunking_context,
             availability_info: availability_info.into_value(),
@@ -85,7 +81,7 @@ impl ManifestChunkAssetVc {
 }
 
 #[turbo_tasks::value_impl]
-impl Asset for ManifestChunkAsset {
+impl Asset for DevManifestChunkAsset {
     #[turbo_tasks::function]
     fn ident(&self) -> AssetIdentVc {
         self.asset.ident().with_modifier(modifier())
@@ -97,7 +93,7 @@ impl Asset for ManifestChunkAsset {
     }
 
     #[turbo_tasks::function]
-    async fn references(self_vc: ManifestChunkAssetVc) -> Result<AssetReferencesVc> {
+    async fn references(self_vc: DevManifestChunkAssetVc) -> Result<AssetReferencesVc> {
         let chunk_group = self_vc.chunk_group();
         let chunks = chunk_group.chunks();
 
@@ -123,10 +119,10 @@ impl Asset for ManifestChunkAsset {
 }
 
 #[turbo_tasks::value_impl]
-impl ChunkableAsset for ManifestChunkAsset {
+impl ChunkableAsset for DevManifestChunkAsset {
     #[turbo_tasks::function]
     fn as_chunk(
-        self_vc: ManifestChunkAssetVc,
+        self_vc: DevManifestChunkAssetVc,
         context: ChunkingContextVc,
         availability_info: Value<AvailabilityInfo>,
     ) -> ChunkVc {
@@ -135,13 +131,13 @@ impl ChunkableAsset for ManifestChunkAsset {
 }
 
 #[turbo_tasks::value_impl]
-impl EcmascriptChunkPlaceable for ManifestChunkAsset {
+impl EcmascriptChunkPlaceable for DevManifestChunkAsset {
     #[turbo_tasks::function]
     fn as_chunk_item(
-        self_vc: ManifestChunkAssetVc,
+        self_vc: DevManifestChunkAssetVc,
         context: EcmascriptChunkingContextVc,
     ) -> EcmascriptChunkItemVc {
-        ManifestChunkItem {
+        DevManifestChunkItem {
             context,
             manifest: self_vc,
         }

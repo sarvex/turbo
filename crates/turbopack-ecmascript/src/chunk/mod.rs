@@ -1,7 +1,6 @@
 pub(crate) mod content;
 pub(crate) mod context;
 pub(crate) mod item;
-pub(crate) mod manifest;
 pub(crate) mod optimize;
 pub(crate) mod placeable;
 pub(crate) mod runtime;

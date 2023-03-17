@@ -9,19 +9,16 @@ use turbopack_core::{
     ident::AssetIdentVc,
     reference::AssetReferencesVc,
 };
-
-use super::chunk_asset::ManifestChunkAssetVc;
-use crate::{
+use turbopack_ecmascript::{
     chunk::{
-        item::{
-            EcmascriptChunkItem, EcmascriptChunkItemContent, EcmascriptChunkItemContentVc,
-            EcmascriptChunkItemVc,
-        },
-        placeable::{EcmascriptChunkPlaceable, EcmascriptChunkPlaceableVc},
+        EcmascriptChunkItem, EcmascriptChunkItemContent, EcmascriptChunkItemContentVc,
+        EcmascriptChunkItemVc, EcmascriptChunkPlaceable, EcmascriptChunkPlaceableVc,
         EcmascriptChunkingContextVc,
     },
     utils::StringifyJs,
 };
+
+use super::chunk_asset::BuildManifestChunkAssetVc;
 
 #[turbo_tasks::function]
 fn modifier() -> StringVc {
@@ -41,20 +38,20 @@ fn modifier() -> StringVc {
 /// actually reached, instead of eagerly as part of the chunk that the dynamic
 /// import appears in.
 #[turbo_tasks::value]
-pub struct ManifestLoaderItem {
-    manifest: ManifestChunkAssetVc,
+pub struct BuildManifestLoaderItem {
+    manifest: BuildManifestChunkAssetVc,
 }
 
 #[turbo_tasks::value_impl]
-impl ManifestLoaderItemVc {
+impl BuildManifestLoaderItemVc {
     #[turbo_tasks::function]
-    pub fn new(manifest: ManifestChunkAssetVc) -> Self {
-        Self::cell(ManifestLoaderItem { manifest })
+    pub fn new(manifest: BuildManifestChunkAssetVc) -> Self {
+        Self::cell(BuildManifestLoaderItem { manifest })
     }
 }
 
 #[turbo_tasks::value_impl]
-impl ChunkItem for ManifestLoaderItem {
+impl ChunkItem for BuildManifestLoaderItem {
     #[turbo_tasks::function]
     fn asset_ident(&self) -> AssetIdentVc {
         self.manifest.ident().with_modifier(modifier())
@@ -70,18 +67,19 @@ impl ChunkItem for ManifestLoaderItem {
 }
 
 #[turbo_tasks::value_impl]
-impl EcmascriptChunkItem for ManifestLoaderItem {
+impl EcmascriptChunkItem for BuildManifestLoaderItem {
     #[turbo_tasks::function]
     async fn chunking_context(&self) -> Result<EcmascriptChunkingContextVc> {
         Ok(self.manifest.await?.chunking_context)
     }
 
     #[turbo_tasks::function]
-    async fn content(self_vc: ManifestLoaderItemVc) -> Result<EcmascriptChunkItemContentVc> {
+    async fn content(self_vc: BuildManifestLoaderItemVc) -> Result<EcmascriptChunkItemContentVc> {
         let this = &*self_vc.await?;
         let mut code = Vec::new();
 
         let manifest = this.manifest.await?;
+
         let asset = manifest.asset.as_asset();
         let chunk = this.manifest.manifest_chunk();
         let chunk_path = &*chunk.path().await?;
@@ -132,8 +130,7 @@ impl EcmascriptChunkItem for ManifestLoaderItem {
                 __turbopack_export_value__((__turbopack_import__) => {{
                     return __turbopack_load__({chunk_server_path}).then(() => {{
                         return __turbopack_require__({item_id});
-                    }}).then(({{ chunks, list }}) => {{
-                        __turbopack_register_chunk_list__(list, chunks);
+                    }}).then((chunks) => {{
                         return Promise.all(chunks.map((chunk_path) => __turbopack_load__(chunk_path)));
                     }}).then(() => {{
                         return __turbopack_import__({dynamic_id});

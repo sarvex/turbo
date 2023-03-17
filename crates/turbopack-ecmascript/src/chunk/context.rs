@@ -1,6 +1,9 @@
 use anyhow::Result;
-use turbo_tasks::ValueToString;
-use turbopack_core::chunk::{ChunkItem, ChunkingContext, ChunkingContextVc, ModuleId, ModuleIdVc};
+use turbo_tasks::{Value, ValueToString};
+use turbopack_core::chunk::{
+    availability_info::AvailabilityInfo, ChunkItem, ChunkableAssetVc, ChunkingContext,
+    ChunkingContextVc, ModuleId, ModuleIdVc,
+};
 
 use super::{item::EcmascriptChunkItemVc, EcmascriptChunkPlaceablesVc, EcmascriptChunkRuntimeVc};
 
@@ -18,6 +21,13 @@ pub trait EcmascriptChunkingContext: ChunkingContext {
         &self,
         evaluated_entries: EcmascriptChunkPlaceablesVc,
     ) -> EcmascriptChunkRuntimeVc;
+
+    /// Returns the loader item that is used to load the given manifest asset.
+    fn manifest_loader_item(
+        &self,
+        asset: ChunkableAssetVc,
+        availability_info: Value<AvailabilityInfo>,
+    ) -> EcmascriptChunkItemVc;
 
     async fn chunk_item_id(&self, chunk_item: EcmascriptChunkItemVc) -> Result<ModuleIdVc> {
         let layer = self.layer();

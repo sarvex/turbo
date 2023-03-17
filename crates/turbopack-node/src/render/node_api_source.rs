@@ -142,8 +142,8 @@ impl GetContentSourceContent for NodeApiGetContentResult {
             entry.module,
             source.runtime_entries,
             entry.chunking_context,
-            entry.intermediate_output_path,
-            entry.output_root,
+            entry.node_path,
+            entry.node_root,
             entry.project_dir,
             RenderData {
                 params: params.clone(),
@@ -200,7 +200,7 @@ impl Introspectable for NodeApiContentSource {
                     entry
                         .module
                         .as_evaluated_chunk(entry.chunking_context, Some(self.runtime_entries)),
-                    entry.intermediate_output_path,
+                    entry.node_path,
                 )),
             ));
         }

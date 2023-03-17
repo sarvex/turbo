@@ -1,16 +1,18 @@
 use anyhow::{anyhow, Result};
 use indexmap::IndexSet;
-use turbo_tasks::{primitives::StringVc, Value};
+use turbo_tasks::{primitives::StringVc, CompletionVc, CompletionsVc, Value};
 use turbo_tasks_env::ProcessEnvVc;
-use turbo_tasks_fs::FileSystemPathVc;
+use turbo_tasks_fs::{File, FileContent, FileSystemPathVc};
 use turbopack_core::{
-    asset::{Asset, AssetsSetVc},
+    asset::{Asset, AssetVc, AssetsSetVc},
+    chunk::ChunkingContextVc,
     introspect::{
         asset::IntrospectableAssetVc, Introspectable, IntrospectableChildrenVc, IntrospectableVc,
     },
     issue::IssueContextExt,
     reference::AssetReference,
     resolve::PrimaryResolveResult,
+    virtual_asset::VirtualAssetVc,
 };
 use turbopack_dev_server::{
     html::DevHtmlAssetVc,
@@ -24,14 +26,14 @@ use turbopack_dev_server::{
         ContentSourceVc, GetContentSourceContent, GetContentSourceContentVc,
     },
 };
-use turbopack_ecmascript::chunk::EcmascriptChunkPlaceablesVc;
+use turbopack_ecmascript::{chunk::EcmascriptChunkPlaceablesVc, EcmascriptModuleAssetVc};
 
 use super::{
     render_static::{render_static, StaticResult},
     RenderData,
 };
 use crate::{
-    external_asset_entrypoints, get_intermediate_asset,
+    emit, external_asset_entrypoints, get_intermediate_asset,
     node_entry::{NodeEntry, NodeEntryVc},
     route_matcher::{RouteMatcher, RouteMatcherVc},
 };
@@ -39,7 +41,7 @@ use crate::{
 /// Creates a content source that renders something in Node.js with the passed
 /// `entry` when it matches a `path_regex`. Once rendered it serves
 /// all assets referenced by the `entry` that are within the `server_root`.
-/// It needs a temporary directory (`intermediate_output_path`) to place file
+/// It needs a temporary directory (`node_root`) to place file
 /// for Node.js execution during rendering. The `chunking_context` should emit
 /// to this directory.
 #[turbo_tasks::function]
@@ -130,7 +132,7 @@ impl GetContentSource for NodeRenderContentSource {
                     entry.module,
                     self.runtime_entries,
                     entry.chunking_context,
-                    entry.intermediate_output_path,
+                    entry.node_path,
                 )
                 .await?
                 .iter()
@@ -213,8 +215,8 @@ impl GetContentSourceContent for NodeRenderGetContentResult {
             source.runtime_entries,
             source.fallback_page,
             entry.chunking_context,
-            entry.intermediate_output_path,
-            entry.output_root,
+            entry.node_path,
+            entry.node_root,
             entry.project_dir,
             RenderData {
                 params: params.clone(),
@@ -282,7 +284,7 @@ impl Introspectable for NodeRenderContentSource {
                     entry
                         .module
                         .as_evaluated_chunk(entry.chunking_context, Some(self.runtime_entries)),
-                    entry.intermediate_output_path,
+                    entry.node_path,
                 )),
             ));
         }

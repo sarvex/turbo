@@ -136,7 +136,7 @@ impl WebpackLoadersProcessedAssetVc {
         let this = self.await?;
 
         let ExecutionContext {
-            project_path,
+            project_root,
             chunking_context,
             env,
         } = *this.execution_context.await?;
@@ -159,7 +159,7 @@ impl WebpackLoadersProcessedAssetVc {
         let loaders = this.loaders.await?;
         let config_value = evaluate(
             webpack_loaders_executor,
-            project_path,
+            project_root,
             env,
             this.source.ident(),
             context,

@@ -2,53 +2,54 @@ use anyhow::{bail, Result};
 use turbo_tasks::{primitives::StringVc, Value, ValueToString, ValueToStringVc};
 use turbopack_core::{
     asset::Asset,
-    chunk::{ChunkGroupVc, ChunkListReferenceVc, ChunkingContext},
+    chunk::{ChunkGroupVc, ChunkListReferenceVc, ChunkReferenceVc, ChunkingContext},
     ident::AssetIdentVc,
     reference::AssetReferencesVc,
 };
 use turbopack_ecmascript::chunk::{
-    EcmascriptChunkPlaceablesVc, EcmascriptChunkRuntime, EcmascriptChunkRuntimeContentVc,
-    EcmascriptChunkRuntimeVc, EcmascriptChunkVc, EcmascriptChunkingContextVc,
+    EcmascriptChunkPlaceableVc, EcmascriptChunkPlaceablesVc, EcmascriptChunkRuntime,
+    EcmascriptChunkRuntimeContentVc, EcmascriptChunkRuntimeVc, EcmascriptChunkVc,
+    EcmascriptChunkingContextVc,
 };
 
-use crate::ecmascript::content::EcmascriptDevChunkContentVc;
+use super::content::EcmascriptBuildNodeChunkContentVc;
 
 /// Development runtime for Ecmascript chunks.
 #[turbo_tasks::value(shared)]
-pub(crate) struct EcmascriptDevChunkRuntime {
+pub(crate) struct EcmascriptBuildNodeChunkRuntime {
     /// The chunking context that created this runtime.
     chunking_context: EcmascriptChunkingContextVc,
     /// All chunks of this chunk group need to be ready for execution to start.
     /// When None, it will use a chunk group created from the current chunk.
     chunk_group: Option<ChunkGroupVc>,
-    /// If any evaluated entries are set, the main runtime code will be included
-    /// in the chunk and the provided entries will be evaluated as soon as the
-    /// chunk executes.
     evaluated_entries: Option<EcmascriptChunkPlaceablesVc>,
+    exported_entry: Option<EcmascriptChunkPlaceableVc>,
 }
 
 #[turbo_tasks::value_impl]
-impl EcmascriptDevChunkRuntimeVc {
-    /// Creates a new [`EcmascriptDevChunkRuntimeVc`].
+impl EcmascriptBuildNodeChunkRuntimeVc {
+    /// Creates a new [`EcmascriptBuildNodeChunkRuntimeVc`].
     #[turbo_tasks::function]
     pub fn new(
         chunking_context: EcmascriptChunkingContextVc,
         evaluated_entries: Option<EcmascriptChunkPlaceablesVc>,
+        exported_entry: Option<EcmascriptChunkPlaceableVc>,
     ) -> Self {
-        EcmascriptDevChunkRuntime {
+        EcmascriptBuildNodeChunkRuntime {
             chunking_context,
             chunk_group: None,
             evaluated_entries,
+            exported_entry,
         }
         .cell()
     }
 }
 
 #[turbo_tasks::value_impl]
-impl ValueToString for EcmascriptDevChunkRuntime {
+impl ValueToString for EcmascriptBuildNodeChunkRuntime {
     #[turbo_tasks::function]
     async fn to_string(&self) -> Result<StringVc> {
-        Ok(StringVc::cell("Ecmascript Dev Runtime".to_string()))
+        Ok(StringVc::cell("Ecmascript Build Runtime".to_string()))
     }
 }
 
@@ -58,7 +59,7 @@ fn modifier() -> StringVc {
 }
 
 #[turbo_tasks::value_impl]
-impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
+impl EcmascriptChunkRuntime for EcmascriptBuildNodeChunkRuntime {
     #[turbo_tasks::function]
     async fn decorate_asset_ident(
         &self,
@@ -69,6 +70,7 @@ impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
             chunking_context: _,
             chunk_group,
             evaluated_entries,
+            exported_entry,
         } = self;
 
         let mut ident = ident.await?.clone_value();
@@ -100,44 +102,62 @@ impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
             }
         }
 
+        if let Some(exported_entry) = exported_entry {
+            ident.modifiers.push(exported_entry.ident().to_string());
+        }
+
         Ok(AssetIdentVc::new(Value::new(ident)))
     }
 
     #[turbo_tasks::function]
-    fn with_chunk_group(&self, chunk_group: ChunkGroupVc) -> EcmascriptDevChunkRuntimeVc {
-        EcmascriptDevChunkRuntimeVc::cell(EcmascriptDevChunkRuntime {
+    fn with_chunk_group(&self, chunk_group: ChunkGroupVc) -> EcmascriptBuildNodeChunkRuntimeVc {
+        EcmascriptBuildNodeChunkRuntimeVc::cell(EcmascriptBuildNodeChunkRuntime {
             chunking_context: self.chunking_context,
             chunk_group: Some(chunk_group),
-            evaluated_entries: self.evaluated_entries,
+            evaluated_entries: self.evaluated_entries.clone(),
+            exported_entry: self.exported_entry.clone(),
         })
     }
 
     #[turbo_tasks::function]
-    fn references(&self, origin_chunk: EcmascriptChunkVc) -> AssetReferencesVc {
-        let Self {
-            chunk_group,
-            chunking_context,
-            evaluated_entries,
-        } = self;
+    async fn references(&self, origin_chunk: EcmascriptChunkVc) -> Result<AssetReferencesVc> {
+        Ok(AssetReferencesVc::empty())
+        // let Self {
+        //     chunk_group,
+        //     chunking_context: _,
+        //     evaluated_entries,
+        //     exported_entry,
+        // } = self;
 
-        let mut references = vec![];
-        if evaluated_entries.is_some() {
-            let chunk_group =
-                chunk_group.unwrap_or_else(|| ChunkGroupVc::from_chunk(origin_chunk.into()));
-            references.push(
-                ChunkListReferenceVc::new(chunking_context.output_root(), chunk_group).into(),
-            );
-        }
-        AssetReferencesVc::cell(references)
+        // let mut references = vec![];
+        // if evaluated_entries.is_some() || exported_entry.is_some() {
+        //     let chunk_group =
+        //         chunk_group.unwrap_or_else(||
+        // ChunkGroupVc::from_chunk(origin_chunk.into()));
+
+        //     let chunks = &*chunk_group.chunks().await?;
+        //     references.reserve(chunks.len());
+        //     for chunk in &*chunk_group.chunks().await? {
+        //         if let Some(chunk) =
+        // EcmascriptChunkVc::resolve_from(chunk).await? {
+        // if chunk == origin_chunk {                 continue;
+        //             }
+        //         }
+
+        //         references.push(ChunkReferenceVc::new(*chunk).into());
+        //     }
+        // }
+        // Ok(AssetReferencesVc::cell(references))
     }
 
     #[turbo_tasks::function]
     fn content(&self, origin_chunk: EcmascriptChunkVc) -> EcmascriptChunkRuntimeContentVc {
-        EcmascriptDevChunkContentVc::new(
+        EcmascriptBuildNodeChunkContentVc::new(
             origin_chunk,
             self.chunking_context,
             self.chunk_group,
-            self.evaluated_entries,
+            self.evaluated_entries.clone(),
+            self.exported_entry.clone(),
         )
         .into()
     }
@@ -151,6 +171,7 @@ impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
             chunking_context,
             chunk_group,
             evaluated_entries,
+            exported_entry,
         } = self;
 
         let chunking_context = chunking_context.resolve().await?;
@@ -166,15 +187,18 @@ impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
             None
         };
 
+        let mut exported_entry = exported_entry.clone();
+
         for runtime in runtimes {
-            let Some(runtime) = EcmascriptDevChunkRuntimeVc::resolve_from(runtime).await? else {
-                bail!("cannot merge EcmascriptDevChunkRuntime with non-EcmascriptDevChunkRuntime");
+            let Some(runtime) = EcmascriptBuildNodeChunkRuntimeVc::resolve_from(runtime).await? else {
+                bail!("cannot merge EcmascriptBuildNodeChunkRuntime with non-EcmascriptBuildNodeChunkRuntime");
             };
 
             let Self {
                 chunking_context: other_chunking_context,
                 chunk_group: other_chunk_group,
                 evaluated_entries: other_evaluated_entries,
+                exported_entry: other_exported_entry,
             } = &*runtime.await?;
 
             let other_chunking_context = other_chunking_context.resolve().await?;
@@ -185,11 +209,13 @@ impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
             };
 
             if chunking_context != other_chunking_context {
-                bail!("cannot merge EcmascriptDevChunkRuntime with different chunking contexts",);
+                bail!(
+                    "cannot merge EcmascriptBuildNodeChunkRuntime with different chunking contexts",
+                );
             }
 
             if chunk_group != other_chunk_group {
-                bail!("cannot merge EcmascriptDevChunkRuntime with different chunk groups",);
+                bail!("cannot merge EcmascriptBuildNodeChunkRuntime with different chunk groups",);
             }
 
             match (&mut evaluated_entries, other_evaluated_entries) {
@@ -201,12 +227,28 @@ impl EcmascriptChunkRuntime for EcmascriptDevChunkRuntime {
                 }
                 _ => {}
             }
+
+            match (&mut exported_entry, other_exported_entry) {
+                (Some(exported_entry), Some(other_exported_entry)) => {
+                    if exported_entry != other_exported_entry {
+                        bail!(
+                            "cannot merge EcmascriptBuildNodeChunkRuntime with different exported \
+                             entries",
+                        );
+                    }
+                }
+                (None, Some(other_exported_entry)) => {
+                    exported_entry = Some(*other_exported_entry);
+                }
+                _ => {}
+            }
         }
 
-        Ok(EcmascriptDevChunkRuntime {
+        Ok(EcmascriptBuildNodeChunkRuntime {
             chunking_context,
             chunk_group,
             evaluated_entries: evaluated_entries.map(EcmascriptChunkPlaceablesVc::cell),
+            exported_entry,
         }
         .cell()
         .into())

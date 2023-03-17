@@ -1,7 +1,6 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use indexmap::IndexSet;
 use indoc::formatdoc;
-use serde::Serialize;
 use turbo_tasks::ValueToString;
 use turbopack_core::{
     asset::Asset,
@@ -9,30 +8,28 @@ use turbopack_core::{
     ident::AssetIdentVc,
     reference::AssetReferencesVc,
 };
-
-use super::chunk_asset::ManifestChunkAssetVc;
-use crate::{
+use turbopack_ecmascript::{
     chunk::{
-        item::{
-            EcmascriptChunkItem, EcmascriptChunkItemContent, EcmascriptChunkItemContentVc,
-            EcmascriptChunkItemVc,
-        },
-        EcmascriptChunkingContextVc,
+        EcmascriptChunkItem, EcmascriptChunkItemContent, EcmascriptChunkItemContentVc,
+        EcmascriptChunkItemVc, EcmascriptChunkingContextVc,
     },
     utils::StringifyJs,
 };
 
-/// The ManifestChunkItem generates a __turbopack_load__ call for every chunk
-/// necessary to load the real asset. Once all the loads resolve, it is safe to
-/// __turbopack_import__ the actual module that was dynamically imported.
+use super::chunk_asset::BuildManifestChunkAssetVc;
+
+/// The BuildManifestChunkItem generates a __turbopack_load__ call for every
+/// chunk necessary to load the real asset. Once all the loads resolve, it is
+/// safe to __turbopack_import__ the actual module that was dynamically
+/// imported.
 #[turbo_tasks::value(shared)]
-pub(super) struct ManifestChunkItem {
+pub(super) struct BuildManifestChunkItem {
     pub context: EcmascriptChunkingContextVc,
-    pub manifest: ManifestChunkAssetVc,
+    pub manifest: BuildManifestChunkAssetVc,
 }
 
 #[turbo_tasks::value_impl]
-impl EcmascriptChunkItem for ManifestChunkItem {
+impl EcmascriptChunkItem for BuildManifestChunkItem {
     #[turbo_tasks::function]
     fn chunking_context(&self) -> EcmascriptChunkingContextVc {
         self.context
@@ -63,26 +60,11 @@ impl EcmascriptChunkItem for ManifestChunkItem {
             chunk_server_paths.insert(chunk_server_path.to_string());
         }
 
-        let chunk_list_path = chunk_group.chunk_list_path().await?;
-        let chunk_list_path = output_root
-            .get_path_to(&chunk_list_path)
-            .ok_or(anyhow!("chunk list path is not in output root"))?;
-
-        #[derive(Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct ManifestChunkExport<'a> {
-            chunks: IndexSet<String>,
-            list: &'a str,
-        }
-
         let code = formatdoc! {
             r#"
                 __turbopack_export_value__({:#});
             "#,
-            StringifyJs(&ManifestChunkExport {
-                chunks: chunk_server_paths,
-                list: chunk_list_path,
-            })
+            StringifyJs(&chunk_server_paths)
         };
 
         Ok(EcmascriptChunkItemContent {
@@ -94,7 +76,7 @@ impl EcmascriptChunkItem for ManifestChunkItem {
 }
 
 #[turbo_tasks::value_impl]
-impl ChunkItem for ManifestChunkItem {
+impl ChunkItem for BuildManifestChunkItem {
     #[turbo_tasks::function]
     fn asset_ident(&self) -> AssetIdentVc {
         self.manifest.ident()
