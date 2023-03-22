@@ -143,7 +143,6 @@ impl CommandBase {
                 turborepo_paths::ForwardRelativePath::new(&self.repo_hash())
                     .expect("hash is valid"),
             )
-            .into()
     }
 
     fn repo_hash(&self) -> String {
