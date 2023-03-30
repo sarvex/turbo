@@ -33,6 +33,8 @@ pnpm-lock.yaml
 # crates in alphabetical order
 /crates @vercel/web-tooling
 # overrides for crates that are owned by turbo-oss
+/crates/globwatch @vercel/turbo-oss
+/crates/pidlock @vercel/turbo-oss
 /crates/turborepo @vercel/turbo-oss
 /crates/turborepo-ffi @vercel/turbo-oss
 /crates/turborepo-lib @vercel/turbo-oss
