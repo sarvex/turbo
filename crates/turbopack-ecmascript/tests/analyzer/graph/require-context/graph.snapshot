@@ -1,0 +1,104 @@
+[
+    (
+        "importAll",
+        Function(
+            9,
+            1,
+            Alternatives(
+                8,
+                [
+                    Constant(
+                        Undefined,
+                    ),
+                    MemberCall(
+                        6,
+                        MemberCall(
+                            3,
+                            Variable(
+                                (
+                                    Atom('r' type=inline),
+                                    #3,
+                                ),
+                            ),
+                            Constant(
+                                Str(
+                                    Word(
+                                        Atom('keys' type=inline),
+                                    ),
+                                ),
+                            ),
+                            [],
+                        ),
+                        Constant(
+                            Str(
+                                Word(
+                                    Atom('map' type=static),
+                                ),
+                            ),
+                        ),
+                        [
+                            Variable(
+                                (
+                                    Atom('r' type=inline),
+                                    #3,
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ),
+    ),
+    (
+        "items",
+        Call(
+            8,
+            Variable(
+                (
+                    Atom('importAll' type=dynamic),
+                    #2,
+                ),
+            ),
+            [
+                MemberCall(
+                    6,
+                    FreeVar(
+                        Require,
+                    ),
+                    Constant(
+                        Str(
+                            Word(
+                                Atom('context' type=inline),
+                            ),
+                        ),
+                    ),
+                    [
+                        Constant(
+                            Str(
+                                Word(
+                                    Atom('./test' type=inline),
+                                ),
+                            ),
+                        ),
+                        Constant(
+                            False,
+                        ),
+                        Constant(
+                            Regex(
+                                "\\.test\\.js$",
+                                "",
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ),
+    (
+        "r",
+        Argument(
+            1,
+            0,
+        ),
+    ),
+]

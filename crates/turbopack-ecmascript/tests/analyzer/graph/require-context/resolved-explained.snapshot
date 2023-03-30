@@ -1,0 +1,7 @@
+importAll = (...) => (undefined | r["keys"]()["map"](r))
+
+items = (undefined | [module<[./test] /context/*, {}>])
+
+r = ???*0*
+- *0* arguments[0]
+  ⚠️  function calls are not analysed yet

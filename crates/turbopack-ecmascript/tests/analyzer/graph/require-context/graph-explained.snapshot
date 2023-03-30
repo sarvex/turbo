@@ -1,0 +1,7 @@
+importAll = (...) => (undefined | r["keys"]()["map"](r))
+
+items = importAll(
+    FreeVar(Require)["context"]("./test", false, /\.test\.js$/)
+)
+
+r = arguments[0]

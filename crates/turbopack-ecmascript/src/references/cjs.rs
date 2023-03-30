@@ -304,6 +304,60 @@ impl CodeGenerateable for CjsRequireResolveAssetReference {
     }
 }
 
+#[turbo_tasks::value]
+#[derive(Hash, Debug)]
+pub struct CjsRequireContextAssetReference {
+    pub origin: ResolveOriginVc,
+    pub request: RequestVc,
+    pub path: AstPathVc,
+}
+
+#[turbo_tasks::value_impl]
+impl CjsRequireContextAssetReferenceVc {
+    #[turbo_tasks::function]
+    pub fn new(origin: ResolveOriginVc, request: RequestVc, path: AstPathVc) -> Self {
+        Self::cell(CjsRequireContextAssetReference {
+            origin,
+            request,
+            path,
+        })
+    }
+}
+
+#[turbo_tasks::value_impl]
+impl AssetReference for CjsRequireContextAssetReference {
+    #[turbo_tasks::function]
+    fn resolve_reference(&self) -> ResolveResultVc {
+        todo!()
+        // cjs_resolve(self.origin, self.request)
+    }
+}
+
+#[turbo_tasks::value_impl]
+impl ValueToString for CjsRequireContextAssetReference {
+    #[turbo_tasks::function]
+    async fn to_string(&self) -> Result<StringVc> {
+        Ok(StringVc::cell(format!(
+            "require.context {}",
+            self.request.to_string().await?,
+        )))
+    }
+}
+
+#[turbo_tasks::value_impl]
+impl ChunkableAssetReference for CjsRequireContextAssetReference {}
+
+#[turbo_tasks::value_impl]
+impl CodeGenerateable for CjsRequireContextAssetReference {
+    #[turbo_tasks::function]
+    async fn code_generation(
+        &self,
+        context: EcmascriptChunkingContextVc,
+    ) -> Result<CodeGenerationVc> {
+        todo!()
+    }
+}
+
 #[turbo_tasks::value(shared)]
 #[derive(Hash, Debug)]
 pub struct CjsRequireCacheAccess {

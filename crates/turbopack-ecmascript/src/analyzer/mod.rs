@@ -171,6 +171,14 @@ impl ConstantValue {
         }
     }
 
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::True => Some(true),
+            Self::False => Some(false),
+            _ => None,
+        }
+    }
+
     pub fn is_truthy(&self) -> bool {
         match self {
             Self::Undefined | Self::False | Self::Null => false,
@@ -1358,6 +1366,9 @@ impl JsValue {
                     ),
                     WellKnownFunctionKind::Require => ("require".to_string(), "The require method from CommonJS"),
                     WellKnownFunctionKind::RequireResolve => ("require.resolve".to_string(), "The require.resolve method from CommonJS"),
+                    WellKnownFunctionKind::RequireContext => ("require.context".to_string(), "The require.context method from webpack"),
+                    WellKnownFunctionKind::RequireContextRequire(..) => ("require.context(...)".to_string(), "The require.context(...) method from webpack: https://webpack.js.org/api/module-methods/#requirecontext"),
+                    WellKnownFunctionKind::RequireContextRequireKeys(..) => ("require.context(...).keys".to_string(), "The require.context(...).keys method from webpack: https://webpack.js.org/guides/dependency-management/#requirecontext"),
                     WellKnownFunctionKind::Define => ("define".to_string(), "The define method from AMD"),
                     WellKnownFunctionKind::FsReadMethod(name) => (
                         format!("fs.{name}"),
@@ -1567,6 +1578,14 @@ impl JsValue {
     pub fn as_str(&self) -> Option<&str> {
         match self {
             JsValue::Constant(c) => c.as_str(),
+            _ => None,
+        }
+    }
+
+    /// Returns the constant bool if the value represents a constant boolean.
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            JsValue::Constant(c) => c.as_bool(),
             _ => None,
         }
     }
@@ -2852,6 +2871,14 @@ impl WellKnownObjectKind {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct RequireContextValue {
+    dir: String,
+    include_subdirs: bool,
+    /// this is a regex (pattern, flags)
+    filter: (Atom, Atom),
+}
+
 /// A list of well-known functions that have special meaning in the analysis.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum WellKnownFunctionKind {
@@ -2863,6 +2890,9 @@ pub enum WellKnownFunctionKind {
     Import,
     Require,
     RequireResolve,
+    RequireContext,
+    RequireContextRequire(RequireContextValue),
+    RequireContextRequireKeys(RequireContextValue),
     Define,
     FsReadMethod(JsWord),
     PathToFileUrl,
@@ -2889,6 +2919,7 @@ impl WellKnownFunctionKind {
             Self::Import => Some(&["import"]),
             Self::Require => Some(&["require"]),
             Self::RequireResolve => Some(&["require", "resolve"]),
+            Self::RequireContext => Some(&["require", "context"]),
             Self::Define => Some(&["define"]),
             _ => None,
         }
@@ -2930,6 +2961,27 @@ pub mod test_utils {
                 JsValue::Constant(v) => (v.to_string() + "/resolved/lib/index.js").into(),
                 _ => JsValue::Unknown(Some(Arc::new(v)), "resolve.resolve non constant"),
             },
+            // TODO
+            // JsValue::Call(
+            //     _,
+            //     box JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContext),
+            //     ref args,
+            // ) => match &args[0] {
+            //     JsValue::Constant(v) => (v.to_string() + "/context/*").into(),
+            //     _ => JsValue::Unknown(Some(Arc::new(v)), "resolve.context non constant"),
+            // },
+            JsValue::Call(
+                _,
+                box JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContextRequireKeys(
+                    val,
+                )),
+                ref args,
+            ) => JsValue::array(vec![(format!(
+                "[{}] {}",
+                val.dir.to_string(),
+                "/context/*"
+            ))
+            .into()]),
             JsValue::FreeVar(var) => match &*var {
                 "require" => JsValue::WellKnownFunction(WellKnownFunctionKind::Require),
                 "define" => JsValue::WellKnownFunction(WellKnownFunctionKind::Define),

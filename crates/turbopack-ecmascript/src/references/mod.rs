@@ -106,7 +106,8 @@ use crate::{
     magic_identifier,
     references::{
         cjs::{
-            CjsRequireAssetReferenceVc, CjsRequireCacheAccess, CjsRequireResolveAssetReferenceVc,
+            CjsRequireAssetReferenceVc, CjsRequireCacheAccess, CjsRequireContextAssetReferenceVc,
+            CjsRequireResolveAssetReferenceVc,
         },
         esm::{module_id::EsmModuleIdAssetReferenceVc, EsmBindingVc, EsmExportsVc},
     },
@@ -725,6 +726,60 @@ pub(crate) async fn analyze_ecmascript_module(
                         )
                     }
 
+                    // TODO
+                    JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContext) => {
+                        let args = linked_args(args).await?;
+                        if (1..4).contains(&args.len()) {
+                            todo!();
+                            let pat = js_value_to_pattern(&args[0]);
+                            if !pat.has_constant_parts() {
+                                let (args, hints) = explain_args(&args);
+                                handler.span_err_with_code(
+                                    span,
+                                    &format!("require.context({args}) is very dynamic{hints}",),
+                                    DiagnosticId::Error(
+                                        errors::failed_to_analyse::ecmascript::REQUIRE_CONTEXT
+                                            .to_string(),
+                                    ),
+                                )
+                            }
+                            analysis.add_reference(CjsRequireContextAssetReferenceVc::new(
+                                origin,
+                                RequestVc::parse(Value::new(pat)),
+                                AstPathVc::cell(ast_path.to_vec()),
+                            ));
+                            return Ok(());
+                        }
+                        let (args, hints) = explain_args(&args);
+                        handler.span_err_with_code(
+                            span,
+                            &format!(
+                                "require.context({args}) is not statically analyse-able{hints}",
+                            ),
+                            DiagnosticId::Error(
+                                errors::failed_to_analyse::ecmascript::REQUIRE_CONTEXT.to_string(),
+                            ),
+                        )
+                    }
+
+                    // TODO: figure out if we need this
+                    // JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContextRequireKeys(.
+                    // .)) => {     let args = linked_args(args).await?;
+                    //     if args.len() == 0 {
+                    //         todo!();
+                    //     }
+                    //     let (args, hints) = explain_args(&args);
+                    //     handler.span_err_with_code(
+                    //         span,
+                    //         &format!(
+                    //             "require.context(...).keys({args}) is not statically
+                    // analyse-able{hints}",         ),
+                    //         DiagnosticId::Error(
+                    //
+                    // errors::failed_to_analyse::ecmascript::REQUIRE_CONTEXT.to_string(),
+                    //         ),
+                    //     )
+                    // }
                     JsValue::WellKnownFunction(WellKnownFunctionKind::FsReadMethod(name)) => {
                         let args = linked_args(args).await?;
                         if !args.is_empty() {
@@ -1914,6 +1969,54 @@ async fn value_visitor_inner(
                         args,
                     ))),
                     "only a single argument is supported",
+                )
+            }
+        }
+        JsValue::Call(
+            _,
+            box JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContext),
+            args,
+        ) => {
+            if (1..4).contains(&args.len()) {
+                todo!()
+                // let pat = js_value_to_pattern(&args[0]);
+                // let request = RequestVc::parse(Value::new(pat.clone()));
+                // let resolved = cjs_resolve(origin, request).await?;
+                // let mut values = resolved
+                //     .primary
+                //     .iter()
+                //     .map(|result| async move {
+                //         Ok(if let PrimaryResolveResult::Asset(asset) = result
+                // {
+                // Some(require_resolve(asset.ident().path()).await?)
+                //         } else {
+                //             None
+                //         })
+                //     })
+                //     .try_join()
+                //     .await?
+                //     .into_iter()
+                //     .flatten()
+                //     .collect::<Vec<_>>();
+                // match values.len() {
+                //     0 => JsValue::Unknown(
+                //         Some(Arc::new(JsValue::call(
+                //             box
+                // JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContext),
+                //             args,
+                //         ))),
+                //         "unresolveable request",
+                //     ),
+                //     1 => values.pop().unwrap(),
+                //     _ => JsValue::alternatives(values),
+                // }
+            } else {
+                JsValue::Unknown(
+                    Some(Arc::new(JsValue::call(
+                        box JsValue::WellKnownFunction(WellKnownFunctionKind::RequireContext),
+                        args,
+                    ))),
+                    "only 1 - 4 arguments are supported",
                 )
             }
         }
