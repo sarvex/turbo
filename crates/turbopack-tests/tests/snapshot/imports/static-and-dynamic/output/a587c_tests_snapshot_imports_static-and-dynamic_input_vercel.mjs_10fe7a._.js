@@ -4,7 +4,12 @@
 
 __turbopack_export_value__({
   "chunks": [
-    "output/a587c_tests_snapshot_imports_static-and-dynamic_input_vercel.mjs_26aaf6._.js"
+    {
+      "path": "output/a587c_tests_snapshot_imports_static-and-dynamic_input_vercel.mjs_26aaf6._.js",
+      "included": [
+        "[project]/crates/turbopack-tests/tests/snapshot/imports/static-and-dynamic/input/vercel.mjs (ecmascript)"
+      ]
+    }
   ],
   "list": "output/a587c_tests_snapshot_imports_static-and-dynamic_input_vercel.mjs_e8af7f._.json"
 });

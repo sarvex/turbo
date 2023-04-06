@@ -4,8 +4,18 @@
 
 __turbopack_export_value__({
   "chunks": [
-    "output/crates_turbopack-tests_tests_snapshot_basic_async_chunk_input_import_a29514.js",
-    "output/20803_foo_index_5f9e1e.js"
+    {
+      "path": "output/crates_turbopack-tests_tests_snapshot_basic_async_chunk_input_import_a29514.js",
+      "included": [
+        "[project]/crates/turbopack-tests/tests/snapshot/basic/async_chunk/input/import.js (ecmascript)"
+      ]
+    },
+    {
+      "path": "output/20803_foo_index_5f9e1e.js",
+      "included": [
+        "[project]/crates/turbopack-tests/tests/snapshot/basic/async_chunk/input/node_modules/foo/index.js (ecmascript)"
+      ]
+    }
   ],
   "list": "output/crates_turbopack-tests_tests_snapshot_basic_async_chunk_input_import.js_f60aac._.json"
 });
