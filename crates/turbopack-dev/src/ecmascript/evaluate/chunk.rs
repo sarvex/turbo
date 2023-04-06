@@ -21,7 +21,10 @@ use turbopack_ecmascript::{
     utils::StringifyJs,
 };
 
-use crate::{ecmascript::list::reference::ChunkListReferenceVc, DevChunkingContextVc};
+use crate::{
+    ecmascript::{chunk_data::ChunkData, list::reference::ChunkListReferenceVc},
+    DevChunkingContextVc,
+};
 
 /// An Ecmascript chunk that:
 /// * Contains the Turbopack dev runtime code; and
@@ -70,11 +73,11 @@ impl EcmascriptDevEvaluateChunkVc {
         };
 
         let other_chunks = this.other_chunks.await?;
-        let mut other_chunks_paths = Vec::with_capacity(other_chunks.len());
-        for other_chunk in &*other_chunks {
-            let other_chunk_path = &*other_chunk.ident().path().await?;
-            if let Some(other_chunk_path) = output_root.get_path_to(other_chunk_path) {
-                other_chunks_paths.push(other_chunk_path.to_string());
+        let mut other_chunks_data = Vec::with_capacity(other_chunks.len());
+        for &other_chunk in &*other_chunks {
+            if let Some(other_chunk_data) = ChunkData::from_asset(&output_root, other_chunk).await?
+            {
+                other_chunks_data.push(other_chunk_data);
             }
         }
 
@@ -114,7 +117,7 @@ impl EcmascriptDevEvaluateChunkVc {
 
         let params = EcmascriptDevChunkRuntimeParams {
             chunk_list_path,
-            other_chunks: other_chunks_paths,
+            other_chunks: other_chunks_data,
             runtime_module_ids,
         };
 
@@ -245,15 +248,15 @@ impl GenerateSourceMap for EcmascriptDevEvaluateChunk {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct EcmascriptDevChunkRuntimeParams<'a> {
+struct EcmascriptDevChunkRuntimeParams<'a, T: Serialize> {
     /// Other chunks in the chunk group this chunk belongs to, if any. Does not
     /// include the chunk itself.
     ///
     /// These chunks must be loaed before the runtime modules can be
     /// instantiated.
-    other_chunks: Vec<String>,
+    other_chunks: Vec<T>,
     /// List of module IDs that this chunk should instantiate when executed.
     runtime_module_ids: Vec<ModuleIdReadRef>,
     /// Path to the chunk list that this chunk should register itself with.

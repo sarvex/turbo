@@ -1,6 +1,7 @@
 import {
   GetFirstModuleChunk,
   GetOrInstantiateRuntimeModule,
+  LoadChunk,
   SourceType,
 } from ".";
 import { DevRuntimeParams } from "./runtime";
@@ -12,6 +13,7 @@ declare global {
   declare const getFirstModuleChunk: GetFirstModuleChunk;
   declare const getOrInstantiateRuntimeModule: GetOrInstantiateRuntimeModule;
   declare const registerChunkListAndMarkAsRuntime: RegisterChunkListAndMarkAsRuntime;
+  declare const loadChunk: InternalLoadChunk;
   declare const SourceTypeRuntime: SourceType.Runtime;
   declare const SourceTypeParent: SourceType.Parent;
   declare const SourceTypeUpdate: SourceType.Update;

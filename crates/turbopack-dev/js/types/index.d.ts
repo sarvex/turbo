@@ -22,6 +22,13 @@ export type ChunkRegistration = [
   chunkModules: ChunkModule[],
   DevRuntimeParams | undefined
 ];
+export type ChunkData =
+  | ChunkPath
+  | {
+      path: ChunkPath;
+      included: ModuleId[];
+      excluded: ModuleId[];
+    };
 
 interface Module {
   exports: Exports;
@@ -132,6 +139,10 @@ export type RegisterChunkListAndMarkAsRuntime = (
   chunkListPath: ChunkPath,
   chunkPaths: ChunkPath[]
 ) => void;
+export type InternalLoadChunk = (
+  source: SourceInfo,
+  chunkData: ChunkData
+) => Promise<any>;
 
 export interface Loader {
   promise: Promise<undefined>;
